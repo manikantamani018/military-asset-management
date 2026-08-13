@@ -1,135 +1,50 @@
 import { useEffect, useState } from "react";
-
-const API_BASE = "http://localhost:5000/api";
+import api from "../services/api";
 
 export default function Assignments() {
+    const [assignmentBaseId, setAssignmentBaseId] = useState("");
+    const [assignmentEquipmentTypeId, setAssignmentEquipmentTypeId] = useState("");
+    const [personnelName, setPersonnelName] = useState("");
+    const [assignmentQuantity, setAssignmentQuantity] = useState("");
 
-    // ASSIGNMENT FORM
+    const [expenditureBaseId, setExpenditureBaseId] = useState("");
+    const [expenditureEquipmentTypeId, setExpenditureEquipmentTypeId] = useState("");
+    const [expenditureQuantity, setExpenditureQuantity] = useState("");
+    const [reason, setReason] = useState("");
 
-    const [assignmentBaseId, setAssignmentBaseId] =
-        useState("");
+    const [bases, setBases] = useState([]);
+    const [equipmentTypes, setEquipmentTypes] = useState([]);
+    const [assignments, setAssignments] = useState([]);
+    const [expenditures, setExpenditures] = useState([]);
 
-    const [assignmentEquipmentTypeId, setAssignmentEquipmentTypeId] =
-        useState("");
+    const [loading, setLoading] = useState(false);
+    const [loadingData, setLoadingData] = useState(true);
 
-    const [personnelName, setPersonnelName] =
-        useState("");
-
-    const [assignmentQuantity, setAssignmentQuantity] =
-        useState("");
-
-
-    // EXPENDITURE FORM
-
-    const [expenditureBaseId, setExpenditureBaseId] =
-        useState("");
-
-    const [expenditureEquipmentTypeId, setExpenditureEquipmentTypeId] =
-        useState("");
-
-    const [expenditureQuantity, setExpenditureQuantity] =
-        useState("");
-
-    const [reason, setReason] =
-        useState("");
-
-
-    // DATA
-
-    const [bases, setBases] =
-        useState([]);
-
-    const [equipmentTypes, setEquipmentTypes] =
-        useState([]);
-
-    const [assignments, setAssignments] =
-        useState([]);
-
-    const [expenditures, setExpenditures] =
-        useState([]);
-
-
-    // UI STATE
-
-    const [loading, setLoading] =
-        useState(false);
-
-    const [message, setMessage] =
-        useState("");
-
-    const [error, setError] =
-        useState("");
-
-
-    // TOKEN
-
-    const getToken = () => {
-
-        return localStorage.getItem("token");
-
-    };
-
-
-    // LOAD BASES + EQUIPMENT TYPES
+    const [message, setMessage] = useState("");
+    const [error, setError] = useState("");
 
     const loadMasterData = async () => {
-
         try {
+            setLoadingData(true);
+            setError("");
 
-            const token = getToken();
+            const token = localStorage.getItem("token");
 
-            const [basesResponse, equipmentResponse] =
-                await Promise.all([
-
-                    fetch(
-                        `${API_BASE}/bases`,
-                        {
-                            headers: {
-                                Authorization:
-                                    `Bearer ${token}`
-                            }
-                        }
-                    ),
-
-                    fetch(
-                        `${API_BASE}/equipment-types`,
-                        {
-                            headers: {
-                                Authorization:
-                                    `Bearer ${token}`
-                            }
-                        }
-                    )
-
-                ]);
-
-
-            const basesData =
-                await basesResponse.json();
-
-            const equipmentData =
-                await equipmentResponse.json();
-
-
-            if (!basesResponse.ok) {
-
-                throw new Error(
-                    basesData.message ||
-                    "Failed to load bases"
-                );
-
+            if (!token) {
+                setError("Please login first.");
+                return;
             }
 
+            const [
+                basesResponse,
+                equipmentResponse
+            ] = await Promise.all([
+                api.get("/assets/bases"),
+                api.get("/assets/equipment-types")
+            ]);
 
-            if (!equipmentResponse.ok) {
-
-                throw new Error(
-                    equipmentData.message ||
-                    "Failed to load equipment types"
-                );
-
-            }
-
+            const basesData = basesResponse.data;
+            const equipmentData = equipmentResponse.data;
 
             setBases(
                 basesData.bases ||
@@ -137,168 +52,106 @@ export default function Assignments() {
                 []
             );
 
-
             setEquipmentTypes(
                 equipmentData.equipmentTypes ||
                 equipmentData.data ||
                 []
             );
-
-
         } catch (err) {
-
             console.error(
                 "Master data error:",
                 err
             );
 
-            setError(err.message);
-
+            setError(
+                err.response?.data?.message ||
+                err.message ||
+                "Failed to load master data"
+            );
+        } finally {
+            setLoadingData(false);
         }
-
     };
 
-
-    // LOAD ASSIGNMENTS
-
     const loadAssignments = async () => {
-
         try {
+            const token = localStorage.getItem("token");
 
-            const token = getToken();
-
-            const response = await fetch(
-                `${API_BASE}/assignments`,
-                {
-                    headers: {
-                        Authorization:
-                            `Bearer ${token}`
-                    }
-                }
-            );
-
-
-            const data =
-                await response.json();
-
-
-            console.log(
-                "ASSIGNMENTS RESPONSE:",
-                data
-            );
-
-
-            if (!response.ok) {
-
-                throw new Error(
-                    data.message ||
-                    "Failed to load assignments"
-                );
-
+            if (!token) {
+                return;
             }
 
+            const response =
+                await api.get("/assignments");
+
+            const data = response.data;
 
             setAssignments(
                 data.assignments ||
                 data.data ||
                 []
             );
-
-
         } catch (err) {
-
             console.error(
                 "Assignments error:",
                 err
             );
 
-            setError(err.message);
-
+            setError(
+                err.response?.data?.message ||
+                err.message ||
+                "Failed to load assignments"
+            );
         }
-
     };
 
-
-    // LOAD EXPENDITURES
-
     const loadExpenditures = async () => {
-
         try {
+            const token = localStorage.getItem("token");
 
-            const token = getToken();
-
-            const response = await fetch(
-                `${API_BASE}/expenditures`,
-                {
-                    headers: {
-                        Authorization:
-                            `Bearer ${token}`
-                    }
-                }
-            );
-
-
-            const data =
-                await response.json();
-
-
-            console.log(
-                "EXPENDITURES RESPONSE:",
-                data
-            );
-
-
-            if (!response.ok) {
-
-                throw new Error(
-                    data.message ||
-                    "Failed to load expenditures"
-                );
-
+            if (!token) {
+                return;
             }
 
+            const response =
+                await api.get("/expenditures");
+
+            const data = response.data;
 
             setExpenditures(
                 data.expenditures ||
                 data.data ||
                 []
             );
-
-
         } catch (err) {
-
             console.error(
                 "Expenditures error:",
                 err
             );
 
-            setError(err.message);
-
+            setError(
+                err.response?.data?.message ||
+                err.message ||
+                "Failed to load expenditures"
+            );
         }
-
     };
 
-    // LOAD ALL DATA
     useEffect(() => {
+        const loadData = async () => {
+            await loadMasterData();
+            await loadAssignments();
+            await loadExpenditures();
+        };
 
-        loadMasterData();
-
-        loadAssignments();
-
-        loadExpenditures();
-
+        loadData();
     }, []);
 
-    // CREATE ASSIGNMENT
-
     const handleAssignmentSubmit = async (e) => {
-
         e.preventDefault();
 
         setMessage("");
-
         setError("");
-
 
         if (
             !assignmentBaseId ||
@@ -306,143 +159,88 @@ export default function Assignments() {
             !personnelName ||
             !assignmentQuantity
         ) {
-
             setError(
                 "Please fill all assignment fields."
             );
 
             return;
-
         }
 
-
-        if (
-            Number(assignmentQuantity) <= 0
-        ) {
-
+        if (Number(assignmentQuantity) <= 0) {
             setError(
                 "Assignment quantity must be greater than zero."
             );
 
             return;
-
         }
 
-
         try {
-
             setLoading(true);
 
-            const token = getToken();
+            const token =
+                localStorage.getItem("token");
 
-
-            const response = await fetch(
-                `${API_BASE}/assignments`,
-                {
-
-                    method: "POST",
-
-                    headers: {
-                        "Content-Type":
-                            "application/json",
-
-                        Authorization:
-                            `Bearer ${token}`
-                    },
-
-                    body: JSON.stringify({
-
-                        baseId:
-                            Number(
-                                assignmentBaseId
-                            ),
-
-                        equipmentTypeId:
-                            Number(
-                                assignmentEquipmentTypeId
-                            ),
-
-                        personnelName:
-                            personnelName.trim(),
-
-                        quantity:
-                            Number(
-                                assignmentQuantity
-                            )
-
-                    })
-
-                }
-            );
-
-
-            const data =
-                await response.json();
-
-
-            console.log(
-                "CREATE ASSIGNMENT:",
-                data
-            );
-
-
-            if (!response.ok) {
-
+            if (!token) {
                 throw new Error(
-                    data.message ||
-                    data.error ||
-                    "Failed to create assignment"
+                    "Please login first."
                 );
-
             }
 
+            await api.post(
+                "/assignments",
+                {
+                    baseId:
+                        Number(
+                            assignmentBaseId
+                        ),
+
+                    equipmentTypeId:
+                        Number(
+                            assignmentEquipmentTypeId
+                        ),
+
+                    personnelName:
+                        personnelName.trim(),
+
+                    quantity:
+                        Number(
+                            assignmentQuantity
+                        )
+                }
+            );
 
             setMessage(
                 "Assignment recorded successfully."
             );
 
-
-            // Clear form
-
             setAssignmentBaseId("");
-
             setAssignmentEquipmentTypeId("");
-
             setPersonnelName("");
-
             setAssignmentQuantity("");
 
-
-            // Refresh table
-
             await loadAssignments();
-
-
         } catch (err) {
-
             console.error(
                 "Create assignment error:",
                 err
             );
 
-            setError(err.message);
-
+            setError(
+                err.response?.data?.message ||
+                err.response?.data?.error ||
+                err.message ||
+                "Failed to create assignment"
+            );
         } finally {
-
             setLoading(false);
-
         }
-
     };
-    // CREATE EXPENDITURE
-    const handleExpenditureSubmit = async (e) => {
 
+    const handleExpenditureSubmit = async (e) => {
         e.preventDefault();
 
         setMessage("");
-
         setError("");
-
 
         if (
             !expenditureBaseId ||
@@ -450,150 +248,93 @@ export default function Assignments() {
             !expenditureQuantity ||
             !reason
         ) {
-
             setError(
                 "Please fill all expenditure fields."
             );
 
             return;
-
         }
 
-
-        if (
-            Number(expenditureQuantity) <= 0
-        ) {
-
+        if (Number(expenditureQuantity) <= 0) {
             setError(
                 "Expenditure quantity must be greater than zero."
             );
 
             return;
-
         }
 
-
         try {
-
             setLoading(true);
 
-            const token = getToken();
+            const token =
+                localStorage.getItem("token");
 
-
-            const response = await fetch(
-                `${API_BASE}/expenditures`,
-                {
-
-                    method: "POST",
-
-                    headers: {
-                        "Content-Type":
-                            "application/json",
-
-                        Authorization:
-                            `Bearer ${token}`
-                    },
-
-                    body: JSON.stringify({
-
-                        baseId:
-                            Number(
-                                expenditureBaseId
-                            ),
-
-                        equipmentTypeId:
-                            Number(
-                                expenditureEquipmentTypeId
-                            ),
-
-                        quantity:
-                            Number(
-                                expenditureQuantity
-                            ),
-
-                        reason:
-                            reason.trim()
-
-                    })
-
-                }
-            );
-
-
-            const data =
-                await response.json();
-
-
-            console.log(
-                "CREATE EXPENDITURE:",
-                data
-            );
-
-
-            if (!response.ok) {
-
+            if (!token) {
                 throw new Error(
-                    data.message ||
-                    data.error ||
-                    "Failed to create expenditure"
+                    "Please login first."
                 );
-
             }
 
+            await api.post(
+                "/expenditures",
+                {
+                    baseId:
+                        Number(
+                            expenditureBaseId
+                        ),
+
+                    equipmentTypeId:
+                        Number(
+                            expenditureEquipmentTypeId
+                        ),
+
+                    quantity:
+                        Number(
+                            expenditureQuantity
+                        ),
+
+                    reason:
+                        reason.trim()
+                }
+            );
 
             setMessage(
                 "Expenditure recorded successfully."
             );
 
-
-            // Clear form
-
             setExpenditureBaseId("");
-
             setExpenditureEquipmentTypeId("");
-
             setExpenditureQuantity("");
-
             setReason("");
 
-
-            // Refresh table
-
             await loadExpenditures();
-
-
         } catch (err) {
-
             console.error(
                 "Create expenditure error:",
                 err
             );
 
-            setError(err.message);
-
+            setError(
+                err.response?.data?.message ||
+                err.response?.data?.error ||
+                err.message ||
+                "Failed to create expenditure"
+            );
         } finally {
-
             setLoading(false);
-
         }
-
     };
-    // FORMAT DATE
-    const formatDate = (date) => {
 
+    const formatDate = (date) => {
         if (!date) {
             return "-";
         }
 
         return new Date(date).toLocaleString();
-
     };
 
-    // UI
     return (
-
         <div>
-
 
             <div className="mb-7">
 
@@ -607,63 +348,103 @@ export default function Assignments() {
 
             </div>
 
-
+            {loadingData && (
+                <div className="
+                    bg-blue-50
+                    border
+                    border-blue-200
+                    text-blue-700
+                    rounded-lg
+                    p-4
+                    mb-5
+                ">
+                    Loading bases and equipment...
+                </div>
+            )}
 
             {message && (
-
-                <div className="bg-green-50 border border-green-200 text-green-700 rounded-lg p-4 mb-5">
-
+                <div className="
+                    bg-green-50
+                    border
+                    border-green-200
+                    text-green-700
+                    rounded-lg
+                    p-4
+                    mb-5
+                ">
                     {message}
-
                 </div>
-
             )}
-
-
 
             {error && (
-
-                <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg p-4 mb-5">
-
+                <div className="
+                    bg-red-50
+                    border
+                    border-red-200
+                    text-red-700
+                    rounded-lg
+                    p-4
+                    mb-5
+                ">
                     {error}
-
                 </div>
-
             )}
 
+            <div className="
+                bg-white
+                rounded-xl
+                border
+                border-slate-200
+                p-6
+                mb-6
+            ">
 
-            <div className="bg-white rounded-xl border border-slate-200 p-6 mb-6">
-
-                <h2 className="text-xl font-semibold mb-5">
+                <h2 className="
+                    text-xl
+                    font-semibold
+                    mb-5
+                ">
                     Assign Equipment
                 </h2>
 
-
                 <form
-                    onSubmit={
-                        handleAssignmentSubmit
-                    }
-                    className="grid grid-cols-1 md:grid-cols-2 gap-5"
+                    onSubmit={handleAssignmentSubmit}
+                    className="
+                        grid
+                        grid-cols-1
+                        md:grid-cols-2
+                        gap-5
+                    "
                 >
-
-                    {/* BASE */}
 
                     <div>
 
-                        <label className="block text-sm font-medium mb-2">
+                        <label className="
+                            block
+                            text-sm
+                            font-medium
+                            mb-2
+                        ">
                             Base
                         </label>
 
                         <select
-                            value={
-                                assignmentBaseId
-                            }
+                            value={assignmentBaseId}
                             onChange={(e) =>
                                 setAssignmentBaseId(
                                     e.target.value
                                 )
                             }
-                            className="w-full border border-slate-300 rounded-lg px-3 py-2"
+                            disabled={loadingData}
+                            className="
+                                w-full
+                                border
+                                border-slate-300
+                                rounded-lg
+                                px-3
+                                py-2
+                                bg-white
+                            "
                         >
 
                             <option value="">
@@ -671,26 +452,26 @@ export default function Assignments() {
                             </option>
 
                             {bases.map((base) => (
-
                                 <option
                                     key={base.id}
                                     value={base.id}
                                 >
                                     {base.name}
                                 </option>
-
                             ))}
 
                         </select>
 
                     </div>
 
-
-                    {/* EQUIPMENT */}
-
                     <div>
 
-                        <label className="block text-sm font-medium mb-2">
+                        <label className="
+                            block
+                            text-sm
+                            font-medium
+                            mb-2
+                        ">
                             Equipment Type
                         </label>
 
@@ -703,7 +484,16 @@ export default function Assignments() {
                                     e.target.value
                                 )
                             }
-                            className="w-full border border-slate-300 rounded-lg px-3 py-2"
+                            disabled={loadingData}
+                            className="
+                                w-full
+                                border
+                                border-slate-300
+                                rounded-lg
+                                px-3
+                                py-2
+                                bg-white
+                            "
                         >
 
                             <option value="">
@@ -712,14 +502,12 @@ export default function Assignments() {
 
                             {equipmentTypes.map(
                                 (equipment) => (
-
                                     <option
                                         key={equipment.id}
                                         value={equipment.id}
                                     >
                                         {equipment.name}
                                     </option>
-
                                 )
                             )}
 
@@ -727,12 +515,14 @@ export default function Assignments() {
 
                     </div>
 
-
-                    {/* PERSONNEL */}
-
                     <div>
 
-                        <label className="block text-sm font-medium mb-2">
+                        <label className="
+                            block
+                            text-sm
+                            font-medium
+                            mb-2
+                        ">
                             Personnel Name
                         </label>
 
@@ -745,17 +535,26 @@ export default function Assignments() {
                                 )
                             }
                             placeholder="Enter personnel name"
-                            className="w-full border border-slate-300 rounded-lg px-3 py-2"
+                            className="
+                                w-full
+                                border
+                                border-slate-300
+                                rounded-lg
+                                px-3
+                                py-2
+                            "
                         />
 
                     </div>
 
-
-                    {/* QUANTITY */}
-
                     <div>
 
-                        <label className="block text-sm font-medium mb-2">
+                        <label className="
+                            block
+                            text-sm
+                            font-medium
+                            mb-2
+                        ">
                             Quantity
                         </label>
 
@@ -769,26 +568,39 @@ export default function Assignments() {
                                 )
                             }
                             placeholder="Enter quantity"
-                            className="w-full border border-slate-300 rounded-lg px-3 py-2"
+                            className="
+                                w-full
+                                border
+                                border-slate-300
+                                rounded-lg
+                                px-3
+                                py-2
+                            "
                         />
 
                     </div>
-
-
-                    {/* BUTTON */}
 
                     <div className="md:col-span-2">
 
                         <button
                             type="submit"
-                            disabled={loading}
-                            className="bg-slate-900 text-white px-6 py-2.5 rounded-lg hover:bg-slate-800 disabled:opacity-50"
+                            disabled={
+                                loading ||
+                                loadingData
+                            }
+                            className="
+                                bg-slate-900
+                                text-white
+                                px-6
+                                py-2.5
+                                rounded-lg
+                                hover:bg-slate-800
+                                disabled:opacity-50
+                            "
                         >
-
                             {loading
                                 ? "Saving..."
                                 : "Assign Equipment"}
-
                         </button>
 
                     </div>
@@ -797,14 +609,22 @@ export default function Assignments() {
 
             </div>
 
+            <div className="
+                bg-white
+                rounded-xl
+                border
+                border-slate-200
+                p-6
+                mb-6
+            ">
 
-
-            <div className="bg-white rounded-xl border border-slate-200 p-6 mb-6">
-
-                <h2 className="text-xl font-semibold mb-5">
+                <h2 className="
+                    text-xl
+                    font-semibold
+                    mb-5
+                ">
                     Assignment History
                 </h2>
-
 
                 {assignments.length === 0 ? (
 
@@ -820,7 +640,10 @@ export default function Assignments() {
 
                             <thead>
 
-                                <tr className="border-b text-left">
+                                <tr className="
+                                    border-b
+                                    text-left
+                                ">
 
                                     <th className="py-3 px-2">
                                         ID
@@ -850,7 +673,6 @@ export default function Assignments() {
 
                             </thead>
 
-
                             <tbody>
 
                                 {assignments.map(
@@ -872,24 +694,31 @@ export default function Assignments() {
                                             <td className="py-3 px-2">
                                                 {
                                                     assignment.base_name ||
-                                                    assignment.base_id
+                                                    assignment.base_id ||
+                                                    "-"
                                                 }
                                             </td>
 
                                             <td className="py-3 px-2">
                                                 {
                                                     assignment.equipment_name ||
-                                                    assignment.equipment_type_id
+                                                    assignment.equipment_type_id ||
+                                                    "-"
                                                 }
                                             </td>
 
                                             <td className="py-3 px-2">
                                                 {
-                                                    assignment.personnel_name
+                                                    assignment.personnel_name ||
+                                                    "-"
                                                 }
                                             </td>
 
-                                            <td className="py-3 px-2 font-semibold">
+                                            <td className="
+                                                py-3
+                                                px-2
+                                                font-semibold
+                                            ">
                                                 {
                                                     assignment.quantity
                                                 }
@@ -898,7 +727,8 @@ export default function Assignments() {
                                             <td className="py-3 px-2">
                                                 {
                                                     formatDate(
-                                                        assignment.assigned_date
+                                                        assignment.assigned_date ||
+                                                        assignment.created_at
                                                     )
                                                 }
                                             </td>
@@ -918,43 +748,61 @@ export default function Assignments() {
 
             </div>
 
+            <div className="
+                bg-white
+                rounded-xl
+                border
+                border-slate-200
+                p-6
+                mb-6
+            ">
 
-            {/*
-                EXPENDITURE FORM
-          */}
-
-            <div className="bg-white rounded-xl border border-slate-200 p-6 mb-6">
-
-                <h2 className="text-xl font-semibold mb-5">
+                <h2 className="
+                    text-xl
+                    font-semibold
+                    mb-5
+                ">
                     Record Expenditure
                 </h2>
 
-
                 <form
-                    onSubmit={
-                        handleExpenditureSubmit
-                    }
-                    className="grid grid-cols-1 md:grid-cols-2 gap-5"
+                    onSubmit={handleExpenditureSubmit}
+                    className="
+                        grid
+                        grid-cols-1
+                        md:grid-cols-2
+                        gap-5
+                    "
                 >
-
-                    {/* BASE */}
 
                     <div>
 
-                        <label className="block text-sm font-medium mb-2">
+                        <label className="
+                            block
+                            text-sm
+                            font-medium
+                            mb-2
+                        ">
                             Base
                         </label>
 
                         <select
-                            value={
-                                expenditureBaseId
-                            }
+                            value={expenditureBaseId}
                             onChange={(e) =>
                                 setExpenditureBaseId(
                                     e.target.value
                                 )
                             }
-                            className="w-full border border-slate-300 rounded-lg px-3 py-2"
+                            disabled={loadingData}
+                            className="
+                                w-full
+                                border
+                                border-slate-300
+                                rounded-lg
+                                px-3
+                                py-2
+                                bg-white
+                            "
                         >
 
                             <option value="">
@@ -962,26 +810,26 @@ export default function Assignments() {
                             </option>
 
                             {bases.map((base) => (
-
                                 <option
                                     key={base.id}
                                     value={base.id}
                                 >
                                     {base.name}
                                 </option>
-
                             ))}
 
                         </select>
 
                     </div>
 
-
-                    {/* EQUIPMENT */}
-
                     <div>
 
-                        <label className="block text-sm font-medium mb-2">
+                        <label className="
+                            block
+                            text-sm
+                            font-medium
+                            mb-2
+                        ">
                             Equipment Type
                         </label>
 
@@ -994,7 +842,16 @@ export default function Assignments() {
                                     e.target.value
                                 )
                             }
-                            className="w-full border border-slate-300 rounded-lg px-3 py-2"
+                            disabled={loadingData}
+                            className="
+                                w-full
+                                border
+                                border-slate-300
+                                rounded-lg
+                                px-3
+                                py-2
+                                bg-white
+                            "
                         >
 
                             <option value="">
@@ -1003,14 +860,12 @@ export default function Assignments() {
 
                             {equipmentTypes.map(
                                 (equipment) => (
-
                                     <option
                                         key={equipment.id}
                                         value={equipment.id}
                                     >
                                         {equipment.name}
                                     </option>
-
                                 )
                             )}
 
@@ -1018,38 +873,47 @@ export default function Assignments() {
 
                     </div>
 
-
-                    {/* QUANTITY */}
-
                     <div>
 
-                        <label className="block text-sm font-medium mb-2">
+                        <label className="
+                            block
+                            text-sm
+                            font-medium
+                            mb-2
+                        ">
                             Quantity
                         </label>
 
                         <input
                             type="number"
                             min="1"
-                            value={
-                                expenditureQuantity
-                            }
+                            value={expenditureQuantity}
                             onChange={(e) =>
                                 setExpenditureQuantity(
                                     e.target.value
                                 )
                             }
                             placeholder="Enter quantity"
-                            className="w-full border border-slate-300 rounded-lg px-3 py-2"
+                            className="
+                                w-full
+                                border
+                                border-slate-300
+                                rounded-lg
+                                px-3
+                                py-2
+                            "
                         />
 
                     </div>
 
-
-                    {/* REASON */}
-
                     <div>
 
-                        <label className="block text-sm font-medium mb-2">
+                        <label className="
+                            block
+                            text-sm
+                            font-medium
+                            mb-2
+                        ">
                             Reason
                         </label>
 
@@ -1062,26 +926,39 @@ export default function Assignments() {
                                 )
                             }
                             placeholder="Enter expenditure reason"
-                            className="w-full border border-slate-300 rounded-lg px-3 py-2"
+                            className="
+                                w-full
+                                border
+                                border-slate-300
+                                rounded-lg
+                                px-3
+                                py-2
+                            "
                         />
 
                     </div>
-
-
-                    {/* BUTTON */}
 
                     <div className="md:col-span-2">
 
                         <button
                             type="submit"
-                            disabled={loading}
-                            className="bg-slate-900 text-white px-6 py-2.5 rounded-lg hover:bg-slate-800 disabled:opacity-50"
+                            disabled={
+                                loading ||
+                                loadingData
+                            }
+                            className="
+                                bg-slate-900
+                                text-white
+                                px-6
+                                py-2.5
+                                rounded-lg
+                                hover:bg-slate-800
+                                disabled:opacity-50
+                            "
                         >
-
                             {loading
                                 ? "Saving..."
                                 : "Record Expenditure"}
-
                         </button>
 
                     </div>
@@ -1090,16 +967,21 @@ export default function Assignments() {
 
             </div>
 
-         
-                //EXPENDITURE HISTORY
-             
+            <div className="
+                bg-white
+                rounded-xl
+                border
+                border-slate-200
+                p-6
+            ">
 
-            <div className="bg-white rounded-xl border border-slate-200 p-6">
-
-                <h2 className="text-xl font-semibold mb-5">
+                <h2 className="
+                    text-xl
+                    font-semibold
+                    mb-5
+                ">
                     Expenditure History
                 </h2>
-
 
                 {expenditures.length === 0 ? (
 
@@ -1115,7 +997,10 @@ export default function Assignments() {
 
                             <thead>
 
-                                <tr className="border-b text-left">
+                                <tr className="
+                                    border-b
+                                    text-left
+                                ">
 
                                     <th className="py-3 px-2">
                                         ID
@@ -1149,7 +1034,6 @@ export default function Assignments() {
 
                             </thead>
 
-
                             <tbody>
 
                                 {expenditures.map(
@@ -1171,14 +1055,16 @@ export default function Assignments() {
                                             <td className="py-3 px-2">
                                                 {
                                                     expenditure.base_name ||
-                                                    expenditure.base_id
+                                                    expenditure.base_id ||
+                                                    "-"
                                                 }
                                             </td>
 
                                             <td className="py-3 px-2">
                                                 {
                                                     expenditure.equipment_name ||
-                                                    expenditure.equipment_type_id
+                                                    expenditure.equipment_type_id ||
+                                                    "-"
                                                 }
                                             </td>
 
@@ -1189,7 +1075,11 @@ export default function Assignments() {
                                                 }
                                             </td>
 
-                                            <td className="py-3 px-2 font-semibold">
+                                            <td className="
+                                                py-3
+                                                px-2
+                                                font-semibold
+                                            ">
                                                 {
                                                     expenditure.quantity
                                                 }
@@ -1197,14 +1087,16 @@ export default function Assignments() {
 
                                             <td className="py-3 px-2">
                                                 {
-                                                    expenditure.reason
+                                                    expenditure.reason ||
+                                                    "-"
                                                 }
                                             </td>
 
                                             <td className="py-3 px-2">
                                                 {
                                                     formatDate(
-                                                        expenditure.expended_date
+                                                        expenditure.expended_date ||
+                                                        expenditure.created_at
                                                     )
                                                 }
                                             </td>
@@ -1225,7 +1117,5 @@ export default function Assignments() {
             </div>
 
         </div>
-
     );
-
 }

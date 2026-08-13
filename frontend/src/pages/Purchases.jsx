@@ -1,115 +1,39 @@
 import { useEffect, useState } from "react";
-
+import api from "../services/api";
 
 export default function Purchases() {
+    const [baseId, setBaseId] = useState("");
+    const [equipmentTypeId, setEquipmentTypeId] = useState("");
+    const [quantity, setQuantity] = useState("");
 
-    // FORM STATE
+    const [bases, setBases] = useState([]);
+    const [equipmentTypes, setEquipmentTypes] = useState([]);
+    const [purchases, setPurchases] = useState([]);
 
-    const [baseId, setBaseId] =
-        useState("");
+    const [loading, setLoading] = useState(false);
+    const [loadingData, setLoadingData] = useState(true);
 
-    const [equipmentTypeId, setEquipmentTypeId] =
-        useState("");
-
-    const [quantity, setQuantity] =
-        useState("");
-
-    // DATA STATE
-
-    const [bases, setBases] =
-        useState([]);
-
-    const [equipmentTypes, setEquipmentTypes] =
-        useState([]);
-
-    const [purchases, setPurchases] =
-        useState([]);
-
-
-    // UI STATE
-
-    const [loading, setLoading] =
-        useState(false);
-
-    const [loadingData, setLoadingData] =
-        useState(true);
-
-    const [message, setMessage] =
-        useState("");
-
-    const [error, setError] =
-        useState("");
-
-
-    // TOKEN
+    const [message, setMessage] = useState("");
+    const [error, setError] = useState("");
 
     const getToken = () => {
-
         return localStorage.getItem("token");
-
     };
 
-    // LOAD BASES + EQUIPMENT
-
     const loadData = async () => {
-
         try {
-
             setLoadingData(true);
-
             setError("");
 
-
-            const token =
-                getToken();
-
+            const token = getToken();
 
             if (!token) {
-
-                setError(
-                    "Please login first."
-                );
-
+                setError("Please login first.");
                 return;
-
             }
 
-
-            // BASES
-
-            const basesResponse =
-                await fetch(
-                    "http://localhost:5000/api/assets/bases",
-                    {
-                        method: "GET",
-
-                        headers: {
-                            Authorization:
-                                `Bearer ${token}`
-                        }
-                    }
-                );
-
-
-            const basesData =
-                await basesResponse.json();
-
-
-            console.log(
-                "BASE RESPONSE:",
-                basesData
-            );
-
-
-            if (!basesResponse.ok) {
-
-                throw new Error(
-                    basesData.message ||
-                    "Failed to load bases"
-                );
-
-            }
-
+            const basesResponse = await api.get("/assets/bases");
+            const basesData = basesResponse.data;
 
             setBases(
                 basesData.bases ||
@@ -117,41 +41,11 @@ export default function Purchases() {
                 []
             );
 
-            // EQUIPMENT TYPES
-
             const equipmentResponse =
-                await fetch(
-                    "http://localhost:5000/api/assets/equipment-types",
-                    {
-                        method: "GET",
-
-                        headers: {
-                            Authorization:
-                                `Bearer ${token}`
-                        }
-                    }
-                );
-
+                await api.get("/assets/equipment-types");
 
             const equipmentData =
-                await equipmentResponse.json();
-
-
-            console.log(
-                "EQUIPMENT RESPONSE:",
-                equipmentData
-            );
-
-
-            if (!equipmentResponse.ok) {
-
-                throw new Error(
-                    equipmentData.message ||
-                    "Failed to load equipment types"
-                );
-
-            }
-
+                equipmentResponse.data;
 
             setEquipmentTypes(
                 equipmentData.equipmentTypes ||
@@ -159,278 +53,131 @@ export default function Purchases() {
                 []
             );
 
-
         } catch (err) {
-
             console.error(
                 "Failed to load purchase data:",
                 err
             );
 
-
             setError(
-                err.message
+                err.response?.data?.message ||
+                err.message ||
+                "Failed to load purchase data"
             );
 
-
         } finally {
-
             setLoadingData(false);
-
         }
-
     };
 
-    // LOAD PURCHASE HISTORY
+    const loadPurchaseHistory = async () => {
+        try {
+            const token = getToken();
 
-    const loadPurchaseHistory =
-        async () => {
-
-            try {
-
-                const token =
-                    getToken();
-
-
-                if (!token) {
-                    return;
-                }
-
-
-                const response =
-                    await fetch(
-                        "http://localhost:5000/api/purchases",
-                        {
-                            method: "GET",
-
-                            headers: {
-                                Authorization:
-                                    `Bearer ${token}`
-                            }
-                        }
-                    );
-
-
-                const data =
-                    await response.json();
-
-
-                console.log(
-                    "PURCHASE HISTORY:",
-                    data
-                );
-
-
-                if (!response.ok) {
-
-                    throw new Error(
-                        data.message ||
-                        "Failed to load purchase history"
-                    );
-
-                }
-
-
-                setPurchases(
-                    data.purchases ||
-                    data.data ||
-                    []
-                );
-
-
-            } catch (err) {
-
-                console.error(
-                    "History error:",
-                    err
-                );
-
+            if (!token) {
+                return;
             }
 
-        };
+            const response = await api.get("/purchases");
+            const data = response.data;
 
+            setPurchases(
+                data.purchases ||
+                data.data ||
+                []
+            );
 
-    // INITIAL LOAD
+        } catch (err) {
+            console.error(
+                "History error:",
+                err
+            );
+        }
+    };
 
     useEffect(() => {
-
         loadData();
-
         loadPurchaseHistory();
-
     }, []);
 
+    const handleSubmit = async (e) => {
+        e.preventDefault();
 
-    // CREATE PURCHASE
+        setMessage("");
+        setError("");
 
-    const handleSubmit =
-        async (e) => {
+        if (
+            !baseId ||
+            !equipmentTypeId ||
+            !quantity
+        ) {
+            setError(
+                "Please select a base, equipment type and quantity."
+            );
 
-            e.preventDefault();
+            return;
+        }
 
+        if (Number(quantity) <= 0) {
+            setError(
+                "Quantity must be greater than zero."
+            );
 
-            setMessage("");
+            return;
+        }
 
-            setError("");
+        try {
+            setLoading(true);
 
+            const token = getToken();
 
-            // VALIDATION
-
-            if (
-                !baseId ||
-                !equipmentTypeId ||
-                !quantity
-            ) {
-
-                setError(
-                    "Please select a base, equipment type and quantity."
+            if (!token) {
+                throw new Error(
+                    "Please login first."
                 );
-
-                return;
-
             }
 
-
-            if (
-                Number(quantity) <= 0
-            ) {
-
-                setError(
-                    "Quantity must be greater than zero."
-                );
-
-                return;
-
-            }
-
-
-            try {
-
-                setLoading(true);
-
-
-                const token =
-                    getToken();
-
-
-                if (!token) {
-
-                    throw new Error(
-                        "Please login first."
-                    );
-
+            await api.post(
+                "/purchases",
+                {
+                    baseId: Number(baseId),
+                    equipmentTypeId:
+                        Number(equipmentTypeId),
+                    quantity:
+                        Number(quantity),
                 }
+            );
 
-                // POST PURCHASE
+            setMessage(
+                "Purchase recorded successfully."
+            );
 
-                const response =
-                    await fetch(
-                        "http://localhost:5000/api/purchases",
-                        {
+            setBaseId("");
+            setEquipmentTypeId("");
+            setQuantity("");
 
-                            method: "POST",
+            await loadPurchaseHistory();
 
-                            headers: {
+        } catch (err) {
+            console.error(
+                "Purchase error:",
+                err
+            );
 
-                                "Content-Type":
-                                    "application/json",
+            setError(
+                err.response?.data?.message ||
+                err.response?.data?.error ||
+                err.message ||
+                "Failed to create purchase"
+            );
 
-                                Authorization:
-                                    `Bearer ${token}`
-
-                            },
-
-                            body:
-                                JSON.stringify({
-
-                                    baseId:
-                                        Number(baseId),
-
-                                    equipmentTypeId:
-                                        Number(equipmentTypeId),
-
-                                    quantity:
-                                        Number(quantity)
-
-                                })
-
-                        }
-                    );
-
-
-                const data =
-                    await response.json();
-
-
-                console.log(
-                    "PURCHASE RESPONSE:",
-                    data
-                );
-
-
-                if (!response.ok) {
-
-                    throw new Error(
-                        data.message ||
-                        data.error ||
-                        "Failed to create purchase"
-                    );
-
-                }
-
-
-                // SUCCESS
-
-                setMessage(
-                    "Purchase recorded successfully."
-                );
-
-
-                // Clear form
-
-                setBaseId("");
-
-                setEquipmentTypeId("");
-
-                setQuantity("");
-
-
-                // Refresh history
-
-                await loadPurchaseHistory();
-
-
-            } catch (err) {
-
-                console.error(
-                    "Purchase error:",
-                    err
-                );
-
-
-                setError(
-                    err.message
-                );
-
-
-            } finally {
-
-                setLoading(false);
-
-            }
-
-        };
-
-
-    // UI
+        } finally {
+            setLoading(false);
+        }
+    };
 
     return (
-
         <div>
-
-            {/* =========================================
-                HEADER
-            ========================================= */}
 
             <div className="mb-7">
 
@@ -439,18 +186,13 @@ export default function Purchases() {
                 </h1>
 
                 <p className="text-slate-500">
-                    Log incoming assets and review purchase history.
+                    Log incoming assets and review
+                    purchase history.
                 </p>
 
             </div>
 
-
-            {/* =========================================
-                SUCCESS MESSAGE
-            ========================================= */}
-
             {message && (
-
                 <div className="
                     bg-green-50
                     border
@@ -460,20 +202,11 @@ export default function Purchases() {
                     p-4
                     mb-5
                 ">
-
                     {message}
-
                 </div>
-
             )}
 
-
-            {/* =========================================
-                ERROR MESSAGE
-            ========================================= */}
-
             {error && (
-
                 <div className="
                     bg-red-50
                     border
@@ -483,17 +216,9 @@ export default function Purchases() {
                     p-4
                     mb-5
                 ">
-
                     {error}
-
                 </div>
-
             )}
-
-
-            {/* =========================================
-                PURCHASE FORM
-            ========================================= */}
 
             <div className="
                 bg-white
@@ -509,11 +234,8 @@ export default function Purchases() {
                     font-semibold
                     mb-5
                 ">
-
                     Record New Purchase
-
                 </h2>
-
 
                 <form
                     onSubmit={handleSubmit}
@@ -525,11 +247,6 @@ export default function Purchases() {
                     "
                 >
 
-
-                    {/* ================================
-                        BASE
-                    ================================= */}
-
                     <div>
 
                         <label className="
@@ -538,24 +255,17 @@ export default function Purchases() {
                             font-medium
                             mb-2
                         ">
-
                             Base
-
                         </label>
 
-
                         <select
-
                             value={baseId}
-
                             onChange={(e) =>
                                 setBaseId(
                                     e.target.value
                                 )
                             }
-
                             disabled={loadingData}
-
                             className="
                                 w-full
                                 border
@@ -573,30 +283,18 @@ export default function Purchases() {
                                     : "Select Base"}
                             </option>
 
-
-                            {bases.map(
-                                (base) => (
-
-                                    <option
-                                        key={base.id}
-                                        value={base.id}
-                                    >
-
-                                        {base.name}
-
-                                    </option>
-
-                                )
-                            )}
+                            {bases.map((base) => (
+                                <option
+                                    key={base.id}
+                                    value={base.id}
+                                >
+                                    {base.name}
+                                </option>
+                            ))}
 
                         </select>
 
                     </div>
-
-
-                    {/* ================================
-                        EQUIPMENT
-                    ================================= */}
 
                     <div>
 
@@ -606,26 +304,17 @@ export default function Purchases() {
                             font-medium
                             mb-2
                         ">
-
                             Equipment Type
-
                         </label>
 
-
                         <select
-
-                            value={
-                                equipmentTypeId
-                            }
-
+                            value={equipmentTypeId}
                             onChange={(e) =>
                                 setEquipmentTypeId(
                                     e.target.value
                                 )
                             }
-
                             disabled={loadingData}
-
                             className="
                                 w-full
                                 border
@@ -643,30 +332,20 @@ export default function Purchases() {
                                     : "Select Equipment"}
                             </option>
 
-
                             {equipmentTypes.map(
                                 (equipment) => (
-
                                     <option
                                         key={equipment.id}
                                         value={equipment.id}
                                     >
-
                                         {equipment.name}
-
                                     </option>
-
                                 )
                             )}
 
                         </select>
 
                     </div>
-
-
-                    {/* ================================
-                        QUANTITY
-                    ================================= */}
 
                     <div>
 
@@ -676,28 +355,19 @@ export default function Purchases() {
                             font-medium
                             mb-2
                         ">
-
                             Quantity
-
                         </label>
 
-
                         <input
-
                             type="number"
-
                             min="1"
-
                             value={quantity}
-
                             onChange={(e) =>
                                 setQuantity(
                                     e.target.value
                                 )
                             }
-
                             placeholder="Enter quantity"
-
                             className="
                                 w-full
                                 border
@@ -706,29 +376,18 @@ export default function Purchases() {
                                 px-3
                                 py-2
                             "
-
                         />
 
                     </div>
 
-
-                    {/* ================================
-                        BUTTON
-                    ================================= */}
-
-                    <div className="
-                        md:col-span-3
-                    ">
+                    <div className="md:col-span-3">
 
                         <button
-
                             type="submit"
-
                             disabled={
                                 loading ||
                                 loadingData
                             }
-
                             className="
                                 bg-slate-900
                                 text-white
@@ -739,24 +398,16 @@ export default function Purchases() {
                                 disabled:opacity-50
                             "
                         >
-
                             {loading
                                 ? "Saving..."
                                 : "Record Purchase"}
-
                         </button>
 
                     </div>
 
-
                 </form>
 
             </div>
-
-
-            {/* =========================================
-                PURCHASE HISTORY
-            ========================================= */}
 
             <div className="
                 bg-white
@@ -771,25 +422,18 @@ export default function Purchases() {
                     font-semibold
                     mb-5
                 ">
-
                     Purchase History
-
                 </h2>
-
 
                 {purchases.length === 0 ? (
 
                     <p className="text-slate-500">
-
                         No purchases recorded yet.
-
                     </p>
 
                 ) : (
 
-                    <div className="
-                        overflow-x-auto
-                    ">
+                    <div className="overflow-x-auto">
 
                         <table className="
                             w-full
@@ -803,52 +447,33 @@ export default function Purchases() {
                                     text-left
                                 ">
 
-                                    <th className="
-                                        py-3
-                                        px-2
-                                    ">
+                                    <th className="py-3 px-2">
                                         ID
                                     </th>
 
-                                    <th className="
-                                        py-3
-                                        px-2
-                                    ">
+                                    <th className="py-3 px-2">
                                         Base
                                     </th>
 
-                                    <th className="
-                                        py-3
-                                        px-2
-                                    ">
+                                    <th className="py-3 px-2">
                                         Equipment
                                     </th>
 
-                                    <th className="
-                                        py-3
-                                        px-2
-                                    ">
+                                    <th className="py-3 px-2">
                                         Category
                                     </th>
 
-                                    <th className="
-                                        py-3
-                                        px-2
-                                    ">
+                                    <th className="py-3 px-2">
                                         Quantity
                                     </th>
 
-                                    <th className="
-                                        py-3
-                                        px-2
-                                    ">
+                                    <th className="py-3 px-2">
                                         Date
                                     </th>
 
                                 </tr>
 
                             </thead>
-
 
                             <tbody>
 
@@ -859,86 +484,52 @@ export default function Purchases() {
                                             key={
                                                 purchase.id
                                             }
-                                            className="
-                                                border-b
-                                            "
+                                            className="border-b"
                                         >
 
-                                            <td className="
-                                                py-3
-                                                px-2
-                                            ">
-
-                                                {
-                                                    purchase.id
-                                                }
-
+                                            <td className="py-3 px-2">
+                                                {purchase.id}
                                             </td>
 
-
-                                            <td className="
-                                                py-3
-                                                px-2
-                                            ">
-
+                                            <td className="py-3 px-2">
                                                 {
                                                     purchase.base_name ||
-                                                    purchase.base_id
+                                                    purchase.base_id ||
+                                                    "-"
                                                 }
-
                                             </td>
 
-
-                                            <td className="
-                                                py-3
-                                                px-2
-                                            ">
-
+                                            <td className="py-3 px-2">
                                                 {
                                                     purchase.equipment_name ||
-                                                    purchase.equipment_type_id
+                                                    purchase.equipment_type_id ||
+                                                    "-"
                                                 }
-
                                             </td>
 
-
-                                            <td className="
-                                                py-3
-                                                px-2
-                                            ">
-
+                                            <td className="py-3 px-2">
                                                 {
                                                     purchase.category ||
                                                     "-"
                                                 }
-
                                             </td>
-
 
                                             <td className="
                                                 py-3
                                                 px-2
                                                 font-semibold
                                             ">
-
                                                 {
                                                     purchase.quantity
                                                 }
-
                                             </td>
 
-
-                                            <td className="
-                                                py-3
-                                                px-2
-                                            ">
-
+                                            <td className="py-3 px-2">
                                                 {
                                                     purchase.purchase_date ||
                                                     purchase.created_at ||
                                                     "-"
                                                 }
-
                                             </td>
 
                                         </tr>
@@ -957,7 +548,5 @@ export default function Purchases() {
             </div>
 
         </div>
-
     );
-
 }
